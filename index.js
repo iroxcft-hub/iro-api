@@ -7,7 +7,7 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-app.post('/api/chat', async (req, res) => {
+app.post('/chat', async (req, res) => {
     try {
         const { messages } = req.body;
         
