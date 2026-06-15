@@ -1,34 +1,45 @@
-const express = require('express');
-const cors = require('cors');
-
+Const express = require('express');
 const app = express();
-app.use(cors());
+
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
+app.post('/v1/chat/completions', async (req, res) => {
+  try {
+    const { messages, model, temperature, max_tokens, stream } = req.body;
 
-app.post('/chat', async (req, res) => {
-    try {
-        const { messages } = req.body;
-        
-        // Groq API'sine istek atıyoruz
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${process.env.Jiuu}`, // Railway'deki Jiuu değişkenin
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'llama3-8b-8192',
-                messages: messages
-            })
-        });
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.Jiuu}`,
+      },
+      body: JSON.stringify({
+        model: model || 'llama3-8b-8192',
+        messages: messages,
+        temperature: temperature ?? 0.7,
+        max_tokens: max_tokens ?? 1024,
+        stream: stream ?? false,
+      }),
+    });
 
-        const data = await response.json();
-        res.json(data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    if (!response.ok) {
+      const errorText = await response.text();
+      return res.status(response.status).json({ error: errorText });
     }
+
+    const data = await response.json();
+    return res.json(data);
+  } catch (error) {
+    console.error('Proxy error:', error);
+    return res.status(500).json({ error: 'Internal server error', details: error.message });
+  }
 });
 
-app.listen(PORT, () => console.log(`Server ${PORT} portunda çalışıyor`));
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
