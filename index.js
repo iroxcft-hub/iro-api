@@ -1,26 +1,35 @@
-const express = require('express');
+const express = require("express");
+const Groq = require("groq-sdk");
+
 const app = express();
 app.use(express.json());
 
-// Groq'a bağlanmak için gerekli kütüphaneyi ekliyoruz
-const Groq = require('groq-sdk');
-const groq = new Groq({ apiKey: process.env.AI_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-app.post('/api', async (req, res) => {
+app.post("/api", async (req, res) => {
+  const { mesaj } = req.body;
+
+  if (!mesaj) {
+    return res.status(400).json({ error: "mesaj alanı gerekli" });
+  }
+
   try {
-    const { mesaj } = req.body;
-    
-    // Groq'a soruyu soruyoruz
-    const chatCompletion = await groq.chat.completions.create({
-      "messages": [{ "role": "user", "content": mesaj }],
-      "model": "llama3-8b-8192", // Burası Groq modelin
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: mesaj }],
+      temperature: 0.9,
+      max_tokens: 2048,
     });
 
-    // Yapay zekadan gelen cevabı uygulamana gönderiyoruz
-    res.json({ cevap: chatCompletion.choices[0].message.content });
-  } catch (error) {
-    res.json({ cevap: "Bir hata oluştu: " + error.message });
+    const cevap = completion.choices[0]?.message?.content ?? "";
+    res.json({ cevap });
+  } catch (err) {
+    console.error("Groq hatası:", err.message);
+    res.status(500).json({ error: "AI çağrısı başarısız: " + err.message });
   }
 });
 
-app.listen(3000, () => console.log('Sunucu çalışıyor!'));
+app.get("/health", (_req, res) => res.json({ durum: "çalışıyor" }));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Sunucu ${PORT} portunda çalışıyor`));
